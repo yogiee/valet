@@ -22,7 +22,7 @@
 Valet runs as a single tray icon and consolidates three responsibilities that previously needed three separate tools, plus one new capability:
 
 - **Kodi launcher.** Launches Kodi at logon (with optional boot delay), kills it cleanly when the system suspends, relaunches it on resume (with optional wake delay). Detects **Steam Big Picture** appearing on screen and gracefully closes Kodi to free GPU/RAM; relaunches Kodi when Big Picture exits.
-- **Remote power + status server.** A small HTTP server on port `5009` (LAN only, token-guarded) exposes `/sleep`, `/sleep/cancel`, `/status`, `/version`, and `/notify`. Root `/` is a token-free health check — *safe* by default, unlike its predecessor.
+- **Remote power + status server.** A small HTTP server on port `5009` (LAN only, token-guarded) exposes `/sleep`, `/sleep/cancel`, `/status`, `/version`, `/notify`, and `/volume`. Root `/` is a token-free health check — *safe* by default, unlike its predecessor.
 - **Toast pass-through.** `POST /notify` from HA renders as a Windows Toast in the Action Center — visible regardless of which app is currently foreground.
 - **AVR Volume OSD** — transparent click-through overlay rendering AVR volume changes pushed by HA, working over Kodi and borderless-fullscreen games. Position / scale / timeout configurable.
 
@@ -73,6 +73,21 @@ rest_command:
       {% set label = 'Mute' if (muted or disp <= 0) else ('MAX' if disp >= 80.5 else '%.1f'|format(disp)) %}
       {"level": {{ bar }}, "label": "{{ label }}", "muted": {{ (muted or disp <= 0)|lower }} }
 
+automation:
+  # Fires the OSD whenever the AVR volume changes — but only when HTPC is the active source.
+  - alias: "HTPC — AVR Volume OSD"
+    trigger:
+      - platform: state
+        entity_id: media_player.rx_v685
+        attribute: volume_level
+    condition:
+      - condition: state
+        entity_id: media_player.rx_v685
+        attribute: source
+        state: "AV1"
+    action:
+      - service: rest_command.htpc_volume_osd
+
 binary_sensor:
   - platform: rest
     name: HTPC Online
@@ -107,6 +122,19 @@ sensor:
 ```
 
 `activity` other than `gaming` is pulled from Kodi's JSON-RPC (`http://localhost:8080/jsonrpc`). Enable it in **Kodi → Settings → Services → Control → "Allow remote control via HTTP"**.
+
+## Volume OSD tuning
+
+The OSD knobs live in `%APPDATA%\Valet\config.json`:
+
+| Key | Default | Notes |
+|---|---|---|
+| `osdEnabled` | `true` | Set `false` to disable the overlay entirely |
+| `osdPosition` | `"bottom-right"` | One of `top-center`, `bottom-center`, `top-right`, `bottom-right` |
+| `osdTimeoutMs` | `2000` | Idle time before fade-out begins |
+| `osdScale` | `1.0` | Multiplier for window dimensions (0.5 – 3.0) |
+
+The OSD strips a trailing `dB` / ` dB` suffix from the `label` field so HA can keep sending the raw RX-V685 readout while the overlay displays just the number.
 
 ## Build from source
 
