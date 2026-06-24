@@ -1,0 +1,15 @@
+<Window x:Class="Valet.Osd.VolumeOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Focusable="False"
+        IsHitTestVisible="False"
+        SizeToContent="WidthAndHeight">
+    <!-- See htpc-companion-app-design.md §4.3 for visuals; click-through via WS_EX_TRANSPARENT in code-behind. -->
+    <Grid />
+</Window>

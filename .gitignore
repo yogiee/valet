@@ -1,0 +1,26 @@
+# Build output
+bin/
+obj/
+out/
+publish/
+dist/
+*.user
+*.suo
+
+# Visual Studio / Rider
+.vs/
+.idea/
+
+# Logs (Valet writes to %APPDATA%\Valet\logs, but ignore stray local logs too)
+*.log
+
+# OS junk
+Thumbs.db
+.DS_Store
+
+# Memory / scratch dirs from harness tooling
+.claude/
+
+# Scratch dir for external assets, cloned reference repos, throwaway research.
+# Not part of the source tree — contents are reproducible/disposable.
+WORKSPACE/
