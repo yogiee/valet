@@ -202,7 +202,7 @@ internal sealed class Endpoints
             return;
         }
 
-        var shown = Toast.Show(payload.Title!, payload.Body, payload.Icon, payload.Scenario, payload.Image);
+        var shown = Toast.Show(payload.Title!, payload.Body, payload.Icon, payload.Scenario, payload.Image, payload.ImagePlacement);
         await HttpServer.WriteJsonAsync(ctx.Response, shown ? 200 : 500,
             new { shown }).ConfigureAwait(false);
     }
@@ -216,6 +216,7 @@ internal sealed class Endpoints
         public string? Body { get; set; }
         public string? Icon { get; set; }
         public string? Scenario { get; set; }
-        public string? Image { get; set; } // hero image URL (http/https/file://)
+        public string? Image { get; set; }          // image URL (http/https/file://)
+        public string? ImagePlacement { get; set; } // inline (default) | hero | logo
     }
 }

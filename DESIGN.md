@@ -209,11 +209,23 @@ Design preserved for resumption:
   "body": "Front door at 19:14",
   "icon": "info",                                  // info | warning | error | none
   "scenario": "default",                           // default | reminder | alarm
-  "image": "http://ha.local/snapshots/door.jpg"    // optional hero image (http(s) or file://)
+  "image": "http://ha.local/snapshots/door.jpg",   // optional image (http(s) or file://)
+  "imagePlacement": "inline"                       // inline (default) | hero | logo
 }
 ```
 
-The `image` field maps to `AddHeroImage` ([Microsoft toast schema — hero image](https://learn.microsoft.com/en-us/windows/apps/develop/notifications/app-notifications/app-notifications-schema#toastgenericheroimage)). Useful for HA camera snapshots, doorbell triggers, etc. Unsupported schemes (anything other than http/https/file) are logged and the toast renders without an image.
+**Image placement** (per the [Microsoft toast schema](https://learn.microsoft.com/en-us/windows/apps/develop/notifications/app-notifications/app-notifications-content)):
+
+| Placement | Banner pop-up | Notifications Center | Best for |
+|---|---|---|---|
+| `inline` (default) | not shown in banner | full image | Detail content seen on demand |
+| `hero` | banner, **cropped to ~2:1** | banner | Wide snapshots, 16:9 sources |
+| `logo` | small circular icon on the side | same | App icons, square avatars |
+
+Notes:
+- `http(s)` URLs are downloaded to `%TEMP%\Valet\toast-images\` before being passed to the toast (unpackaged Win32 toasts don't fetch URIs themselves). Stable filename per URL — repeated notifications reuse the path but content is always refreshed.
+- `file://` URIs are passed through directly when the file exists.
+- Other schemes (`data:`, `ftp:`, `ms-appx:`) are logged and the toast renders without an image.
 
 **HA examples:**
 ```yaml

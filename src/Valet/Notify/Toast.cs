@@ -47,7 +47,13 @@ internal static class Toast
         }
     }
 
-    public static bool Show(string title, string? body, string? icon = null, string? scenario = null, string? image = null)
+    public static bool Show(
+        string title,
+        string? body,
+        string? icon = null,
+        string? scenario = null,
+        string? image = null,
+        string? imagePlacement = null)
     {
         try
         {
@@ -57,17 +63,31 @@ internal static class Toast
                 builder.AddText(body);
             }
 
-            // Hero image (large banner at the top of the toast).
-            // Schema: https://learn.microsoft.com/windows/apps/develop/notifications/app-notifications/app-notifications-content#hero-image
+            // Image placements per the Microsoft schema:
+            //   inline (default) — full image in body, aspect ratio preserved
+            //   hero            — banner at top, forcibly cropped to ~2:1 by Windows
+            //   logo            — small circular icon to the left of the text
+            // https://learn.microsoft.com/windows/apps/develop/notifications/app-notifications/app-notifications-content
             //
-            // Unpackaged Win32 apps using the legacy ToastNotificationManager (which is what
-            // Microsoft.Toolkit.Uwp.Notifications uses under the hood) do NOT fetch http(s) URIs
-            // for image src — only local file paths work reliably. So we download web images to
-            // a temp file first and pass that.
+            // For unpackaged Win32 apps, the ToastNotificationManager doesn't fetch http(s)
+            // URIs for image src — local file paths only. So http(s) gets downloaded first.
             var localImage = ResolveImageToLocalPath(image);
             if (localImage is not null)
             {
-                builder.AddHeroImage(new Uri(localImage));
+                var imgUri = new Uri(localImage);
+                switch ((imagePlacement ?? "inline").ToLowerInvariant())
+                {
+                    case "hero":
+                        builder.AddHeroImage(imgUri);
+                        break;
+                    case "logo":
+                    case "applogo":
+                        builder.AddAppLogoOverride(imgUri, ToastGenericAppLogoCrop.Circle);
+                        break;
+                    default:
+                        builder.AddInlineImage(imgUri);
+                        break;
+                }
             }
 
             if (string.Equals(scenario, "alarm", StringComparison.OrdinalIgnoreCase))
@@ -80,7 +100,7 @@ internal static class Toast
             }
 
             builder.Show();
-            Log.Info($"Toast shown: {title}{(localImage is null ? "" : " (with image)")}");
+            Log.Info($"Toast shown: {title}{(localImage is null ? "" : $" (image={imagePlacement ?? "inline"})")}");
             return true;
         }
         catch (Exception ex)

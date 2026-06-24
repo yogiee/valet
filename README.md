@@ -52,8 +52,11 @@ rest_command:
     content_type: "application/json"
     headers:
       X-Auth-Token: !secret valet_token
-    # 'image' is optional — adds a hero-image banner (e.g. a camera snapshot URL from HA)
-    payload: '{"title":"{{ title }}","body":"{{ message }}","icon":"info","image":"{{ image | default(none) }}"}'
+    # 'image' (http/https/file://) is optional. 'imagePlacement' picks how it renders:
+    #   hero   — banner in the pop-up, cropped to ~2:1 (best for 16:9 snapshots)
+    #   logo   — small circular icon on the side (best for square app icons)
+    #   inline — full image, only visible in the Notifications Center expanded view (default)
+    payload: '{"title":"{{ title }}","body":"{{ message }}","icon":"info","image":"{{ image | default(none) }}","imagePlacement":"hero"}'
 
 binary_sensor:
   - platform: rest
