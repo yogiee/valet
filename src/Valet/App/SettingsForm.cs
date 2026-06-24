@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Windows.Forms;
 using Valet.Logging;
+using Valet.Update;
 
 namespace Valet.App;
 
@@ -177,25 +178,19 @@ internal sealed class SettingsForm : Form
 
         AddSpacer(grid, ref row);
 
-        var checkNowBtn = NewButton("Check for updates now", (_, _) =>
-        {
-            MessageBox.Show(this,
-                "Update checking isn't wired up yet — the manifest source and release format are still being decided.\n\n" +
-                "Settings on this tab are saved and will drive the check once it's enabled.",
-                "Valet", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        });
+        var checkNowBtn = NewButton("Check for updates now", async (sender, _) => await CheckForUpdatesNowAsync(sender));
         checkNowBtn.AutoSize = true;
-        checkNowBtn.Enabled = true; // shows the placeholder dialog above
         AddRow(grid, ref row, string.Empty, checkNowBtn);
 
         AddSpacer(grid, ref row);
 
         var note = new Label
         {
-            Text = "Auto-update mechanism not yet implemented. Choose preferences here; " +
-                   "they take effect once the update client lands.",
+            Text = "Updates are pulled from GitHub Releases. When one is available, " +
+                   "Valet downloads the installer and runs it silently — the installer " +
+                   "closes Valet, installs the new version, and restarts it.",
             AutoSize = false,
-            Height = 40,
+            Height = 56,
             ForeColor = SystemColors.GrayText,
         };
         grid.SetColumnSpan(note, 2);
@@ -459,6 +454,72 @@ internal sealed class SettingsForm : Form
         catch (Exception ex)
         {
             Log.Error("OpenUrl", ex);
+        }
+    }
+
+    private async Task CheckForUpdatesNowAsync(object? sender)
+    {
+        var btn = sender as Button;
+        var prevText = btn?.Text;
+        if (btn is not null) { btn.Enabled = false; btn.Text = "Checking…"; }
+
+        try
+        {
+            // Persist channel choice before checking, so the UI selection actually matters.
+            _config.AutoUpdateChannel = _autoUpdateChannel.SelectedItem?.ToString() ?? "stable";
+
+            using var checker = new UpdateChecker(_config);
+            var result = await checker.CheckAsync().ConfigureAwait(true);
+
+            switch (result.Status)
+            {
+                case UpdateStatus.UpToDate:
+                    MessageBox.Show(this,
+                        $"You're on the latest version ({result.CurrentVersion}).",
+                        "Valet", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+
+                case UpdateStatus.NoReleases:
+                    MessageBox.Show(this,
+                        "No releases on GitHub yet — there's nothing to update to.",
+                        "Valet", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+
+                case UpdateStatus.Error:
+                    MessageBox.Show(this,
+                        $"Update check failed:\n\n{result.ErrorMessage}",
+                        "Valet", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+
+                case UpdateStatus.Available:
+                    var prompt = MessageBox.Show(this,
+                        $"Valet {result.LatestTag} is available (you have {result.CurrentVersion}).\n\n" +
+                        "Download and install now? Valet will close, install the new version, " +
+                        "and restart automatically.",
+                        "Valet", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (prompt != DialogResult.Yes) return;
+
+                    if (btn is not null) btn.Text = "Downloading…";
+                    var installerPath = await checker.DownloadAndInstallAsync(result).ConfigureAwait(true);
+                    if (installerPath is null)
+                    {
+                        MessageBox.Show(this,
+                            "Download or installer launch failed. See log for details.",
+                            "Valet", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    // On success, the installer closes Valet via Restart Manager — no further action needed.
+                    return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("CheckForUpdatesNow", ex);
+            MessageBox.Show(this, $"Unexpected error: {ex.Message}", "Valet",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            if (btn is not null) { btn.Enabled = true; btn.Text = prevText; }
         }
     }
 

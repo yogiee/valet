@@ -24,9 +24,16 @@ if (-not (Test-Path $publishExe)) {
 $size = [math]::Round((Get-Item $publishExe).Length / 1MB, 2)
 Write-Host "    Published: $publishExe ($size MB)" -ForegroundColor Green
 
-$iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-if (-not (Test-Path $iscc)) {
-    Write-Warning "Inno Setup 6 not found at $iscc."
+$isccCandidates = @(
+    "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+    "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
+    "${env:LOCALAPPDATA}\Programs\Inno Setup 6\ISCC.exe"
+)
+$iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $iscc) {
+    Write-Warning "Inno Setup 6 (ISCC.exe) not found in any of:"
+    $isccCandidates | ForEach-Object { Write-Warning "    $_" }
     Write-Host "    Install with: winget install --id JRSoftware.InnoSetup --source winget" -ForegroundColor Yellow
     Write-Host "    Then re-run .\build.ps1 to produce the installer." -ForegroundColor Yellow
     exit 0

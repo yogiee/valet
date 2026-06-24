@@ -6,6 +6,7 @@ using Valet.Logging;
 using Valet.Notify;
 using Valet.Power;
 using Valet.Server;
+using Valet.Update;
 
 namespace Valet;
 
@@ -42,10 +43,52 @@ internal static class Program
         using var server = new HttpServer(config.HttpPort, endpoints, auth);
         server.Start();
 
+        if (config.AutoUpdateCheckOnStartup)
+        {
+            _ = Task.Run(() => StartupUpdateCheckAsync(config));
+        }
+
         using var tray = new TrayApplication(config, power);
         Application.Run(tray.MessageLoopContext);
 
         Log.Info("Valet stopping");
         return 0;
+    }
+
+    private static async Task StartupUpdateCheckAsync(Config config)
+    {
+        try
+        {
+            // Give the rest of startup time to settle, and avoid hammering GitHub at exactly logon time.
+            await Task.Delay(TimeSpan.FromSeconds(30)).ConfigureAwait(false);
+
+            using var checker = new UpdateChecker(config);
+            var result = await checker.CheckAsync().ConfigureAwait(false);
+
+            switch (result.Status)
+            {
+                case UpdateStatus.Available:
+                    Log.Info($"Update available: {result.LatestTag} (current {result.CurrentVersion}); installing silently");
+                    Toast.Show($"Updating Valet to {result.LatestTag}", "Valet will restart in a moment.");
+                    await checker.DownloadAndInstallAsync(result).ConfigureAwait(false);
+                    break;
+
+                case UpdateStatus.UpToDate:
+                    Log.Info($"Up to date ({result.CurrentVersion} == {result.LatestTag})");
+                    break;
+
+                case UpdateStatus.NoReleases:
+                    Log.Info("No releases on GitHub yet — auto-update inactive");
+                    break;
+
+                case UpdateStatus.Error:
+                    Log.Warn($"Startup update check error: {result.ErrorMessage}");
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("StartupUpdateCheck", ex);
+        }
     }
 }
