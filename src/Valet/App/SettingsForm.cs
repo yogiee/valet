@@ -17,6 +17,8 @@ internal sealed class SettingsForm : Form
     // Launcher tab
     private CheckBox _launchAtLogon = null!;
     private TextBox _kodiPath = null!;
+    private TextBox _kodiHttpUser = null!;
+    private TextBox _kodiHttpPass = null!;
     private TextBox _steamPath = null!;
     private NumericUpDown _bootDelay = null!;
     private NumericUpDown _wakeDelay = null!;
@@ -103,6 +105,12 @@ internal sealed class SettingsForm : Form
 
         _kodiPath = new TextBox();
         AddRow(grid, ref row, "Kodi exe:", _kodiPath, NewButton("Browse…", OnBrowseKodi));
+
+        _kodiHttpUser = new TextBox();
+        AddRow(grid, ref row, "Kodi HTTP user:", _kodiHttpUser, stretch: true);
+
+        _kodiHttpPass = new TextBox { UseSystemPasswordChar = true };
+        AddRow(grid, ref row, "Kodi HTTP password:", _kodiHttpPass, stretch: true);
 
         _steamPath = new TextBox();
         AddRow(grid, ref row, "Steam exe:", _steamPath, NewButton("Browse…", OnBrowseSteam));
@@ -376,6 +384,8 @@ internal sealed class SettingsForm : Form
     {
         _launchAtLogon.Checked = AutostartTask.IsInstalled();
         _kodiPath.Text = _config.KodiPath;
+        _kodiHttpUser.Text = _config.KodiHttpUsername;
+        _kodiHttpPass.Text = _config.KodiHttpPassword;
         _steamPath.Text = _config.SteamPath;
         _bootDelay.Value = ClampToRange(_config.BootDelaySec, _bootDelay);
         _wakeDelay.Value = ClampToRange(_config.WakeDelaySec, _wakeDelay);
@@ -551,6 +561,8 @@ internal sealed class SettingsForm : Form
         var oldWake = _config.WakeDelaySec;
 
         _config.KodiPath = string.IsNullOrWhiteSpace(_kodiPath.Text) ? "auto" : _kodiPath.Text.Trim();
+        _config.KodiHttpUsername = _kodiHttpUser.Text.Trim();
+        _config.KodiHttpPassword = _kodiHttpPass.Text; // don't trim — passwords can have spaces
         _config.SteamPath = string.IsNullOrWhiteSpace(_steamPath.Text) ? "auto" : _steamPath.Text.Trim();
         _config.LaunchOnStartup = _launchAtLogon.Checked;
         _config.BootDelaySec = (int)_bootDelay.Value;

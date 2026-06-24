@@ -1,7 +1,9 @@
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Valet.App;
 using Valet.Logging;
 
 namespace Valet.Kodi;
@@ -20,9 +22,18 @@ internal sealed class KodiJsonRpc : IDisposable
 
     private readonly HttpClient _http;
 
-    public KodiJsonRpc()
+    public KodiJsonRpc(Config config)
     {
         _http = new HttpClient { Timeout = TimeSpan.FromMilliseconds(500) };
+
+        // Kodi v19+ requires Basic auth by default. Defaults are user="kodi", password="" —
+        // matches the box defaults exactly so most installs work without further config.
+        if (!string.IsNullOrEmpty(config.KodiHttpUsername))
+        {
+            var creds = $"{config.KodiHttpUsername}:{config.KodiHttpPassword}";
+            var b64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(creds));
+            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", b64);
+        }
     }
 
     public async Task<(string Activity, KodiActivityDetail? Detail)> ProbeActivityAsync()

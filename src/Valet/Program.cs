@@ -34,13 +34,14 @@ internal static class Program
 
         var kodi = new KodiController(() => config.KodiPath);
         using var steam = new SteamWatcher();
+        using var steamGame = new SteamRunningGame();
         using var powerEvents = new PowerEvents();
-        using var lifecycle = new LifecycleStateMachine(config, kodi, steam, powerEvents);
-        using var kodiRpc = new KodiJsonRpc();
+        using var lifecycle = new LifecycleStateMachine(config, kodi, steam, steamGame, powerEvents);
+        using var kodiRpc = new KodiJsonRpc(config);
         using var osd = new OsdController(config);
 
         var auth = new Auth(config.AuthToken, config.AllowedCidr);
-        var endpoints = new Endpoints(power, lifecycle, kodiRpc, osd);
+        var endpoints = new Endpoints(power, lifecycle, kodiRpc, osd, steamGame);
 
         using var server = new HttpServer(config.HttpPort, endpoints, auth);
         server.Start();

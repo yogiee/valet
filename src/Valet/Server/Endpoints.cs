@@ -25,6 +25,7 @@ internal sealed class Endpoints
     private readonly LifecycleStateMachine? _lifecycle;
     private readonly KodiJsonRpc? _kodiRpc;
     private readonly OsdController? _osd;
+    private readonly SteamRunningGame? _steamGame;
     private readonly DateTime _startedUtc = DateTime.UtcNow;
     private VolumePayload? _lastVolume;
 
@@ -32,12 +33,14 @@ internal sealed class Endpoints
         PowerActions power,
         LifecycleStateMachine? lifecycle = null,
         KodiJsonRpc? kodiRpc = null,
-        OsdController? osd = null)
+        OsdController? osd = null,
+        SteamRunningGame? steamGame = null)
     {
         _power = power;
         _lifecycle = lifecycle;
         _kodiRpc = kodiRpc;
         _osd = osd;
+        _steamGame = steamGame;
     }
 
     public async Task RouteAsync(HttpListenerContext ctx, Auth auth)
@@ -110,10 +113,24 @@ internal sealed class Endpoints
         var foreground = GetForeground();
 
         string activity;
-        KodiActivityDetail? activityDetail = null;
+        object? activityDetail = null;
 
-        if (state == "gaming")
+        var steamAppId = _steamGame?.CurrentAppId ?? 0;
+
+        if (steamAppId != 0)
         {
+            activity = "gaming";
+            activityDetail = new
+            {
+                title = _steamGame?.CurrentName,
+                type = "game",
+                source = "steam",
+                appId = steamAppId,
+            };
+        }
+        else if (state == "gaming")
+        {
+            // BPM window open, no specific game running yet
             activity = "gaming";
         }
         else if (!kodiRunning || _kodiRpc is null)
@@ -122,7 +139,14 @@ internal sealed class Endpoints
         }
         else
         {
-            (activity, activityDetail) = await _kodiRpc.ProbeActivityAsync().ConfigureAwait(false);
+            var (a, d) = await _kodiRpc.ProbeActivityAsync().ConfigureAwait(false);
+            activity = a;
+            activityDetail = d is null ? null : new
+            {
+                title = d.Title,
+                type = d.Type,
+                source = "kodi",
+            };
         }
 
         await HttpServer.WriteJsonAsync(ctx.Response, 200, new

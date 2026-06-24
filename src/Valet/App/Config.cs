@@ -23,6 +23,9 @@ internal sealed class Config
     public int OsdTimeoutMs { get; set; } = 2000;
     public double OsdScale { get; set; } = 1.0;
 
+    public string KodiHttpUsername { get; set; } = "kodi"; // Kodi default
+    public string KodiHttpPassword { get; set; } = "";
+
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         WriteIndented = true,
