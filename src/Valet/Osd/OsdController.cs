@@ -38,6 +38,7 @@ internal sealed class OsdController : IDisposable
             _window.UpdateContent(level, label, muted);
             _window.FadeIn();
             ResetHideTimer();
+            Log.Info($"OSD shown: level={level} label='{label}' muted={muted}");
         }
         catch (Exception ex)
         {

@@ -57,6 +57,21 @@ public partial class VolumeOverlayWindow : Window
     public void FadeIn(double durationMs = 120)
     {
         if (!IsVisible) Show();
+
+        // Re-assert HWND_TOPMOST every time we show — Kodi (and other fullscreen apps that came
+        // up after Valet) sit in the same TOPMOST tier and can outrank our Z-order. Forcing the
+        // overlay to the front of the topmost tier on each show makes it visible above them.
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            NativeMethods.SetWindowPos(
+                hwnd,
+                NativeMethods.HWND_TOPMOST,
+                0, 0, 0, 0,
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE |
+                NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
+        }
+
         var anim = new DoubleAnimation
         {
             To = 1.0,
