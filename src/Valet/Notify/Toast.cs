@@ -1,4 +1,8 @@
+using System.IO;
+using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Toolkit.Uwp.Notifications;
 using Microsoft.Win32;
 using Valet.Logging;
@@ -9,6 +13,9 @@ internal static class Toast
 {
     public const string Aumid = "io.github.yogiee.Valet";
     private const string AumidRegPath = @"Software\Classes\AppUserModelId\io.github.yogiee.Valet";
+
+    private static readonly string ImageCacheDir = Path.Combine(Path.GetTempPath(), "Valet", "toast-images");
+    private static readonly HttpClient ImageHttp = new() { Timeout = TimeSpan.FromSeconds(10) };
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = true)]
     private static extern int SetCurrentProcessExplicitAppUserModelID(
@@ -50,20 +57,17 @@ internal static class Toast
                 builder.AddText(body);
             }
 
-            // Hero image (large banner at the top of the toast) per
-            // https://learn.microsoft.com/windows/apps/develop/notifications/app-notifications/app-notifications-schema#toastgenericheroimage
-            // Accepts http(s) URLs and file:// paths. Other schemes are ignored to keep things predictable.
-            if (!string.IsNullOrWhiteSpace(image)
-                && Uri.TryCreate(image, UriKind.Absolute, out var imgUri)
-                && (imgUri.Scheme == Uri.UriSchemeHttp ||
-                    imgUri.Scheme == Uri.UriSchemeHttps ||
-                    imgUri.Scheme == Uri.UriSchemeFile))
+            // Hero image (large banner at the top of the toast).
+            // Schema: https://learn.microsoft.com/windows/apps/develop/notifications/app-notifications/app-notifications-content#hero-image
+            //
+            // Unpackaged Win32 apps using the legacy ToastNotificationManager (which is what
+            // Microsoft.Toolkit.Uwp.Notifications uses under the hood) do NOT fetch http(s) URIs
+            // for image src — only local file paths work reliably. So we download web images to
+            // a temp file first and pass that.
+            var localImage = ResolveImageToLocalPath(image);
+            if (localImage is not null)
             {
-                builder.AddHeroImage(imgUri);
-            }
-            else if (!string.IsNullOrWhiteSpace(image))
-            {
-                Log.Warn($"Toast image URI ignored (unsupported scheme or malformed): {image}");
+                builder.AddHeroImage(new Uri(localImage));
             }
 
             if (string.Equals(scenario, "alarm", StringComparison.OrdinalIgnoreCase))
@@ -76,13 +80,57 @@ internal static class Toast
             }
 
             builder.Show();
-            Log.Info($"Toast shown: {title}");
+            Log.Info($"Toast shown: {title}{(localImage is null ? "" : " (with image)")}");
             return true;
         }
         catch (Exception ex)
         {
             Log.Error("Toast.Show failed", ex);
             return false;
+        }
+    }
+
+    private static string? ResolveImageToLocalPath(string? image)
+    {
+        if (string.IsNullOrWhiteSpace(image)) return null;
+        if (!Uri.TryCreate(image, UriKind.Absolute, out var imgUri))
+        {
+            Log.Warn($"Toast image URI is not absolute, ignoring: {image}");
+            return null;
+        }
+
+        if (imgUri.Scheme == Uri.UriSchemeFile)
+        {
+            return File.Exists(imgUri.LocalPath) ? imgUri.LocalPath : null;
+        }
+
+        if (imgUri.Scheme != Uri.UriSchemeHttp && imgUri.Scheme != Uri.UriSchemeHttps)
+        {
+            Log.Warn($"Toast image URI scheme '{imgUri.Scheme}' not supported: {image}");
+            return null;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(ImageCacheDir);
+
+            // Stable filename per URL so repeated notifications reuse the same file
+            // (Windows toast renderer caches by path).
+            var ext = Path.GetExtension(imgUri.LocalPath);
+            if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(imgUri.AbsoluteUri)))[..16].ToLowerInvariant();
+            var path = Path.Combine(ImageCacheDir, $"img-{hash}{ext}");
+
+            // Always re-download — a stable URL can still serve fresh content (camera snapshots etc.).
+            var bytes = ImageHttp.GetByteArrayAsync(imgUri).GetAwaiter().GetResult();
+            File.WriteAllBytes(path, bytes);
+            Log.Info($"Toast image downloaded: {imgUri} → {path} ({bytes.Length} bytes)");
+            return path;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Toast image download failed ({image}): {ex.Message}");
+            return null;
         }
     }
 }
