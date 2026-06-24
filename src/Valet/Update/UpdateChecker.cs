@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
 using Valet.App;
 using Valet.Logging;
 
@@ -124,14 +125,24 @@ internal sealed class UpdateChecker : IDisposable
                 Log.Info("No SHA256 in release body — skipping verification (TLS only)");
             }
 
+            var installerLog = Path.Combine(Path.GetTempPath(), "valet-installer.log");
             var psi = new ProcessStartInfo
             {
                 FileName = tempPath,
-                Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS",
+                Arguments = $"/VERYSILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS /LOG=\"{installerLog}\"",
                 UseShellExecute = true,
             };
             using var p = Process.Start(psi);
-            Log.Info($"Installer launched (pid={p?.Id.ToString() ?? "?"}); Inno will close + restart Valet via Restart Manager");
+            Log.Info($"Installer launched (pid={p?.Id.ToString() ?? "?"}). Inno log: {installerLog}");
+
+            // Give the installer 1.5s to start + register itself, then exit ourselves so the
+            // installer can write to Valet.exe without fighting our file handles. We do NOT
+            // rely on Inno's Restart Manager close path — a tray-only app has no top-level
+            // window to handle WM_QUERYENDSESSION, so RM-close just hangs. Voluntary exit is
+            // far cleaner. The installer's postinstall [Run] entry relaunches Valet for us.
+            await Task.Delay(TimeSpan.FromSeconds(1.5), ct).ConfigureAwait(false);
+            Log.Info("Exiting Valet so installer can replace files");
+            Application.Exit();
             return tempPath;
         }
         catch (Exception ex)
