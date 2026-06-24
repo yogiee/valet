@@ -50,7 +50,7 @@ internal static class Program
             _ = Task.Run(() => StartupUpdateCheckAsync(config));
         }
 
-        using var tray = new TrayApplication(config, power);
+        using var tray = new TrayApplication(config, power, kodi);
         Application.Run(tray.MessageLoopContext);
 
         Log.Info("Valet stopping");

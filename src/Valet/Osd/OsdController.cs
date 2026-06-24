@@ -70,7 +70,7 @@ internal sealed class OsdController : IDisposable
         // WorkArea excludes the taskbar — positioning relative to its bottom keeps
         // the OSD above the taskbar regardless of taskbar placement/size.
         var screen = SystemParameters.WorkArea;
-        const double edgeMargin = 16.0;   // small consistent gap from screen edges
+        const double edgeMargin = 32.0;   // gap from screen edges (right + above taskbar)
         const double topMargin = 80.0;    // larger gap from top for top-* positions
 
         switch ((_config.OsdPosition ?? "bottom-right").ToLowerInvariant())

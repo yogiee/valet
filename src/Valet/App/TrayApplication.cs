@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Windows.Forms;
+using Valet.Kodi;
 using Valet.Logging;
 using Valet.Power;
 
@@ -9,18 +10,23 @@ internal sealed class TrayApplication : IDisposable
 {
     private readonly Config _config;
     private readonly PowerActions _power;
+    private readonly KodiController _kodi;
     private readonly NotifyIcon _notifyIcon;
     private readonly ApplicationContext _context;
     private SettingsForm? _settingsForm;
 
-    public TrayApplication(Config config, PowerActions power)
+    public TrayApplication(Config config, PowerActions power, KodiController kodi)
     {
         _config = config;
         _power = power;
+        _kodi = kodi;
         _context = new ApplicationContext();
 
         var menu = new ContextMenuStrip();
         menu.Items.Add("Valet").Enabled = false;
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Launch Kodi", image: null, (_, _) => _kodi.Launch());
+        menu.Items.Add("Launch Steam (Big Picture)", image: null, (_, _) => SteamLauncher.LaunchBigPicture(_config.SteamPath));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Sleep now", image: null, (_, _) => _power.SuspendNow());
         menu.Items.Add(new ToolStripSeparator());
@@ -36,6 +42,7 @@ internal sealed class TrayApplication : IDisposable
             Visible = true,
             ContextMenuStrip = menu,
         };
+        _notifyIcon.DoubleClick += (_, _) => OpenSettings();
     }
 
     public ApplicationContext MessageLoopContext => _context;
