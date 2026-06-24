@@ -10,8 +10,8 @@
         Focusable="False"
         IsHitTestVisible="False"
         SizeToContent="Manual"
-        Width="380"
-        Height="84"
+        Width="240"
+        Height="50"
         Opacity="0">
 
     <Window.Resources>
@@ -22,13 +22,13 @@
         </Style>
     </Window.Resources>
 
-    <Border CornerRadius="14"
-            Background="#E61C1C1C"
+    <Border CornerRadius="10"
+            Background="#CC1C1C1C"
             BorderBrush="#33FFFFFF"
             BorderThickness="1"
-            Padding="20,16,20,16">
+            Padding="12,8,12,8">
         <Border.Effect>
-            <DropShadowEffect Color="#000000" BlurRadius="24" ShadowDepth="0" Opacity="0.5" />
+            <DropShadowEffect Color="#000000" BlurRadius="18" ShadowDepth="0" Opacity="0.5" />
         </Border.Effect>
 
         <Grid>
@@ -42,26 +42,26 @@
             <TextBlock x:Name="IconGlyph"
                        Grid.Column="0"
                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                       FontSize="22"
+                       FontSize="18"
                        Text="&#xE767;"
-                       Margin="0,0,16,0" />
+                       Margin="0,0,10,0" />
 
             <!-- Bar: track + fill -->
-            <Grid Grid.Column="1" Height="6" VerticalAlignment="Center">
-                <Rectangle RadiusX="3" RadiusY="3" Fill="#33FFFFFF" />
+            <Grid Grid.Column="1" Height="5" VerticalAlignment="Center">
+                <Rectangle RadiusX="2.5" RadiusY="2.5" Fill="#33FFFFFF" />
                 <Rectangle x:Name="BarFill"
                            HorizontalAlignment="Left"
                            Width="0"
-                           RadiusX="3" RadiusY="3"
+                           RadiusX="2.5" RadiusY="2.5"
                            Fill="#FFFFFFFF" />
             </Grid>
 
-            <!-- Numeric label / dB reading -->
+            <!-- Numeric label (dB suffix stripped in code-behind) -->
             <TextBlock x:Name="LabelText"
                        Grid.Column="2"
-                       Margin="16,0,0,0"
-                       FontSize="16"
-                       MinWidth="60"
+                       Margin="10,0,0,0"
+                       FontSize="20"
+                       MinWidth="50"
                        TextAlignment="Right"
                        Text="—" />
         </Grid>

@@ -36,12 +36,12 @@ public partial class VolumeOverlayWindow : Window
         level = Math.Clamp(level, 0, 100);
         IconGlyph.Text = muted ? IconMute : IconVolume;
 
-        var displayLabel = !string.IsNullOrWhiteSpace(label) ? label : (muted ? "Mute" : $"{level}%");
+        var clean = StripDbSuffix(label);
+        var displayLabel = !string.IsNullOrWhiteSpace(clean) ? clean : (muted ? "Mute" : $"{level}%");
         LabelText.Text = displayLabel;
 
-        // Bar track lives between the icon column (22 + 16 margin) and the label column
-        // (60 min + 16 margin). Total chrome: 20 left + 22 icon + 16 + 60 label + 16 + 20 right = 154.
-        var w = (ActualWidth > 0 ? ActualWidth : Width) - 154;
+        // Chrome breakdown: 12 left + 18 icon + 10 + 50 label + 10 + 12 right = 112.
+        var w = (ActualWidth > 0 ? ActualWidth : Width) - 112;
         if (w < 1) w = 1;
         var target = muted ? 0 : w * (level / 100.0);
 
@@ -64,6 +64,18 @@ public partial class VolumeOverlayWindow : Window
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
         };
         BeginAnimation(OpacityProperty, anim);
+    }
+
+    // Strip a trailing "dB" or " dB" suffix (case-insensitive) since the OSD shows just the number.
+    private static string? StripDbSuffix(string? label)
+    {
+        if (string.IsNullOrWhiteSpace(label)) return label;
+        var s = label.TrimEnd();
+        if (s.EndsWith("dB", StringComparison.OrdinalIgnoreCase))
+        {
+            s = s[..^2].TrimEnd();
+        }
+        return s;
     }
 
     public void FadeOut(double durationMs = 280, Action? onCompleted = null)

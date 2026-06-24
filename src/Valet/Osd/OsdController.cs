@@ -66,27 +66,30 @@ internal sealed class OsdController : IDisposable
 
     private void PositionWindow(VolumeOverlayWindow w)
     {
+        // WorkArea excludes the taskbar — positioning relative to its bottom keeps
+        // the OSD above the taskbar regardless of taskbar placement/size.
         var screen = SystemParameters.WorkArea;
-        var margin = 80.0;
+        const double edgeMargin = 16.0;   // small consistent gap from screen edges
+        const double topMargin = 80.0;    // larger gap from top for top-* positions
 
-        switch ((_config.OsdPosition ?? "top-center").ToLowerInvariant())
+        switch ((_config.OsdPosition ?? "bottom-right").ToLowerInvariant())
         {
+            case "top-center":
+                w.Left = screen.Left + (screen.Width - w.Width) / 2;
+                w.Top  = screen.Top  + topMargin;
+                break;
             case "bottom-center":
                 w.Left = screen.Left + (screen.Width - w.Width) / 2;
-                w.Top  = screen.Top  + screen.Height - w.Height - margin;
+                w.Top  = screen.Top  + screen.Height - w.Height - edgeMargin;
                 break;
             case "top-right":
-                w.Left = screen.Left + screen.Width - w.Width - 24;
-                w.Top  = screen.Top  + margin;
+                w.Left = screen.Left + screen.Width - w.Width - edgeMargin;
+                w.Top  = screen.Top  + topMargin;
                 break;
             case "bottom-right":
-                w.Left = screen.Left + screen.Width - w.Width - 24;
-                w.Top  = screen.Top  + screen.Height - w.Height - margin;
-                break;
-            case "top-center":
             default:
-                w.Left = screen.Left + (screen.Width - w.Width) / 2;
-                w.Top  = screen.Top  + margin;
+                w.Left = screen.Left + screen.Width - w.Width - edgeMargin;
+                w.Top  = screen.Top  + screen.Height - w.Height - edgeMargin;
                 break;
         }
     }
