@@ -34,8 +34,10 @@ internal sealed class UpdateChecker : IDisposable
     private const string Repo = "valet";
     private const string ApiBase = $"https://api.github.com/repos/{Owner}/{Repo}";
 
+    // Tolerant: allows colon/equals/whitespace/backticks/quotes between the label and the hex run.
     private static readonly Regex Sha256InBody =
-        new(@"\bSHA-?256[:=\s]*([0-9a-fA-F]{64})\b", RegexOptions.Compiled);
+        new(@"\bSHA-?256\b[^0-9a-fA-F]*([0-9a-fA-F]{64})\b",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private readonly HttpClient _http;
     private readonly Config _config;
