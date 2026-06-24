@@ -11,7 +11,7 @@
 ; Output: dist\Valet-Setup-<version>.exe
 
 #define MyAppName      "Valet"
-#define MyAppVersion   "0.1.3"
+#define MyAppVersion   "0.1.4"
 #define MyAppPublisher "Tandem Theory"
 #define MyAppExeName   "Valet.exe"
 #define PublishDir     "..\src\Valet\bin\Release\net10.0-windows10.0.19041.0\win-x64\publish"
