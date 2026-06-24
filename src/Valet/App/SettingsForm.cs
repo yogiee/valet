@@ -186,11 +186,12 @@ internal sealed class SettingsForm : Form
 
         var note = new Label
         {
-            Text = "Updates are pulled from GitHub Releases. When one is available, " +
-                   "Valet downloads the installer and runs it silently — the installer " +
-                   "closes Valet, installs the new version, and restarts it.",
+            Text = "Updates are pulled from GitHub Releases. When a new version is published, " +
+                   "Valet shows a toast notification — open this tab and click \"Check for updates now\" " +
+                   "to install. The installer needs admin rights, so Windows will show a UAC prompt " +
+                   "you'll need to approve.",
             AutoSize = false,
-            Height = 56,
+            Height = 64,
             ForeColor = SystemColors.GrayText,
         };
         grid.SetColumnSpan(note, 2);

@@ -68,9 +68,11 @@ internal static class Program
             switch (result.Status)
             {
                 case UpdateStatus.Available:
-                    Log.Info($"Update available: {result.LatestTag} (current {result.CurrentVersion}); installing silently");
-                    Toast.Show($"Updating Valet to {result.LatestTag}", "Valet will restart in a moment.");
-                    await checker.DownloadAndInstallAsync(result).ConfigureAwait(false);
+                    Log.Info($"Update available: {result.LatestTag} (current {result.CurrentVersion}); notifying user");
+                    Toast.Show(
+                        $"Valet update available: {result.LatestTag}",
+                        "Right-click the tray icon → Settings → Auto Update → Check for updates now to install.",
+                        scenario: "reminder");
                     break;
 
                 case UpdateStatus.UpToDate:

@@ -32,7 +32,7 @@ Valet runs as a single tray icon and consolidates three responsibilities that pr
 2. Run as administrator. The installer registers a logon task (highest privileges), opens an inbound firewall rule for TCP 5009 (Private profile, LAN only), and reserves the HTTP URL ACL.
 3. Right-click the **Valet** tray icon → **Settings…** to point at your `kodi.exe` and `steam.exe`, and adjust the allowed CIDR for your LAN.
 
-Auto-update polls GitHub Releases on startup and silently swaps versions via the installer (`/VERYSILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS`). Disable in **Settings → Auto Update** if you prefer manual upgrades.
+Auto-update polls GitHub Releases on startup. When a new version is available, Valet shows a Windows toast — open **Settings → Auto Update → Check for updates now** to install. (User-triggered so you're present to approve the Windows UAC prompt the installer raises.)
 
 ## Home Assistant wiring
 
@@ -52,7 +52,8 @@ rest_command:
     content_type: "application/json"
     headers:
       X-Auth-Token: !secret valet_token
-    payload: '{"title":"{{ title }}","body":"{{ message }}","icon":"info"}'
+    # 'image' is optional — adds a hero-image banner (e.g. a camera snapshot URL from HA)
+    payload: '{"title":"{{ title }}","body":"{{ message }}","icon":"info","image":"{{ image | default(none) }}"}'
 
 binary_sensor:
   - platform: rest

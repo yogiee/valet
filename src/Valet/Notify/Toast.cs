@@ -40,7 +40,7 @@ internal static class Toast
         }
     }
 
-    public static bool Show(string title, string? body, string? icon = null, string? scenario = null)
+    public static bool Show(string title, string? body, string? icon = null, string? scenario = null, string? image = null)
     {
         try
         {
@@ -48,6 +48,22 @@ internal static class Toast
             if (!string.IsNullOrWhiteSpace(body))
             {
                 builder.AddText(body);
+            }
+
+            // Hero image (large banner at the top of the toast) per
+            // https://learn.microsoft.com/windows/apps/develop/notifications/app-notifications/app-notifications-schema#toastgenericheroimage
+            // Accepts http(s) URLs and file:// paths. Other schemes are ignored to keep things predictable.
+            if (!string.IsNullOrWhiteSpace(image)
+                && Uri.TryCreate(image, UriKind.Absolute, out var imgUri)
+                && (imgUri.Scheme == Uri.UriSchemeHttp ||
+                    imgUri.Scheme == Uri.UriSchemeHttps ||
+                    imgUri.Scheme == Uri.UriSchemeFile))
+            {
+                builder.AddHeroImage(imgUri);
+            }
+            else if (!string.IsNullOrWhiteSpace(image))
+            {
+                Log.Warn($"Toast image URI ignored (unsupported scheme or malformed): {image}");
             }
 
             if (string.Equals(scenario, "alarm", StringComparison.OrdinalIgnoreCase))

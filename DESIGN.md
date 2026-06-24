@@ -207,10 +207,13 @@ Design preserved for resumption:
 {
   "title": "Door opened",
   "body": "Front door at 19:14",
-  "icon": "info",            // info | warning | error | none
-  "scenario": "default"      // default | reminder | alarm
+  "icon": "info",                                  // info | warning | error | none
+  "scenario": "default",                           // default | reminder | alarm
+  "image": "http://ha.local/snapshots/door.jpg"    // optional hero image (http(s) or file://)
 }
 ```
+
+The `image` field maps to `AddHeroImage` ([Microsoft toast schema — hero image](https://learn.microsoft.com/en-us/windows/apps/develop/notifications/app-notifications/app-notifications-schema#toastgenericheroimage)). Useful for HA camera snapshots, doorbell triggers, etc. Unsupported schemes (anything other than http/https/file) are logged and the toast renders without an image.
 
 **HA examples:**
 ```yaml
@@ -409,7 +412,7 @@ New-NetFirewallRule -DisplayName "Valet HTTP 5009" -Direction Inbound `
 - ✅ `installer/Valet.iss` + `build.ps1`: Inno Setup script + one-shot publish-and-package script. Release self-contained publish verified (78 MB single-file `Valet.exe` at `src\Valet\bin\Release\net10.0-windows10.0.19041.0\win-x64\publish\`). Installer script (Files, schtasks logon task, firewall rule, URL ACL, Start Menu shortcut, postinstall launch, uninstall reversal incl. taskkill / schtasks delete / firewall remove / urlacl release) is written but **not yet compiled** — Inno Setup 6 is not installed on the dev box. `build.ps1` warns and exits cleanly with the winget install command when iscc is missing. `CloseApplications=yes` + `CloseApplicationsFilter=*.exe` already in for the auto-update silent-install path.
 - ✅ Icons + branding: `Valet.ico` (coin) as `ApplicationIcon` (exe + taskbar + Alt+Tab), `Valet-tray.ico` embedded for `NotifyIcon`, `valet-coin-128.png` embedded for the About-tab logo. AUMID: `io.github.yogiee.Valet`. Settings reorganized into four tabs (Launcher / Server / Auto Update / About) with About showing the coin, version, blurb, GitHub link, log/config folder links, and `© Yogi Gharat (yogiee)`.
 - ✅ Public repo created at <https://github.com/yogiee/valet> — initial commit pushed, MIT license, README with coin-icon header, KodiLauncher + remote-shutdown-pc credited.
-- ✅ `Update/UpdateChecker.cs`: GitHub Releases poller. `CheckAsync()` hits `api.github.com/repos/yogiee/valet/releases/latest` (stable) or `/releases?per_page=10` (beta), parses the tag (`v0.1.0` → `Version`), compares to `Assembly.GetName().Version`, picks the `Valet-Setup-*.exe` asset, extracts an optional `SHA256: <hex>` from the release body. `DownloadAndInstallAsync()` downloads to `%TEMP%`, verifies SHA256 if present (else logs that TLS is the only check), and launches the installer with `/VERYSILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS`. Inno's Restart Manager flow closes Valet, installs, and restarts it. Startup auto-check fires 30 s after boot (avoids hammering at logon time) and runs silently when an update is found, preceded by a toast. Settings "Check for updates now" runs the same code with a confirmation prompt. Smoke-tested against the empty `yogiee/valet` repo — 404 path correctly reports `NoReleases`.
+- ✅ `Update/UpdateChecker.cs`: GitHub Releases poller. `CheckAsync()` hits `api.github.com/repos/yogiee/valet/releases/latest` (stable) or `/releases?per_page=10` (beta), parses the tag (`v0.1.0` → `Version`), compares to `Assembly.GetName().Version`, picks the `Valet-Setup-*.exe` asset, extracts an optional SHA256 from the release body. `DownloadAndInstallAsync()` downloads to `%TEMP%`, verifies SHA256 if present (else logs that TLS is the only check), and launches the installer with `/VERYSILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS`. Inno's Restart Manager flow closes Valet, installs, and restarts it. Startup auto-check fires 30 s after boot — on update available, **only shows a toast notification**; the user manually triggers install from Settings → Auto Update → Check for updates now (so the user is present to approve the UAC elevation prompt). Smoke-tested v0.1.0 → v0.1.1 upgrade: full chain validated through "Installer launched" at 9 s post-detect; install completion gated by UAC and confirmed by manual Yes.
 - 🟡 OSD module still empty namespace stubs.
 
 **Implementation order:**
