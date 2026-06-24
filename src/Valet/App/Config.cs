@@ -18,6 +18,11 @@ internal sealed class Config
     public bool AutoUpdateCheckOnStartup { get; set; } = true;
     public string AutoUpdateChannel { get; set; } = "stable"; // stable | beta
 
+    public bool OsdEnabled { get; set; } = true;
+    public string OsdPosition { get; set; } = "top-center"; // top-center | bottom-center | top-right | bottom-right
+    public int OsdTimeoutMs { get; set; } = 2000;
+    public double OsdScale { get; set; } = 1.0;
+
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         WriteIndented = true,

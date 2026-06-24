@@ -4,6 +4,7 @@ using Valet.App;
 using Valet.Kodi;
 using Valet.Logging;
 using Valet.Notify;
+using Valet.Osd;
 using Valet.Power;
 using Valet.Server;
 using Valet.Update;
@@ -36,9 +37,10 @@ internal static class Program
         using var powerEvents = new PowerEvents();
         using var lifecycle = new LifecycleStateMachine(config, kodi, steam, powerEvents);
         using var kodiRpc = new KodiJsonRpc();
+        using var osd = new OsdController(config);
 
         var auth = new Auth(config.AuthToken, config.AllowedCidr);
-        var endpoints = new Endpoints(power, lifecycle, kodiRpc);
+        var endpoints = new Endpoints(power, lifecycle, kodiRpc, osd);
 
         using var server = new HttpServer(config.HttpPort, endpoints, auth);
         server.Start();

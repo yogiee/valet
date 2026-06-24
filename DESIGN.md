@@ -143,15 +143,20 @@ See §5 for the full route table.
 
 **Dropped from RemoteShutdown for v1:** shutdown, restart, forceshutdown, hibernate, turnscreenoff, lock, parental control (hide tray + password). Extension points left clean if any return.
 
-### 4.3 Volume OSD — DEFERRED to v1.1
-
-Design preserved for resumption:
+### 4.3 Volume OSD
 
 - **Model:** HA pushes AVR volume → `POST /volume` → transparent click-through always-on-top WPF overlay.
-- **Payload:** `{level, label, muted}`. RX-V685 math (`disp = round(volume_level*161)*0.5`, 0–80.5) computed in HA, not Valet.
-- **Look:** Win11-style minimal flyout (position/scale/theme configurable).
-- **Click-through:** `WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST`.
+- **Payload:** `{level, label, muted}`. RX-V685 math (`disp = round(volume_level*161)*0.5`, 0–80.5) computed in HA, not Valet. At least one of `level` or `label` is required.
+- **Look:** Rounded semi-transparent dark flyout (380×84 base, scales via `osdScale`); speaker glyph + horizontal bar + numeric/dB label using Segoe Fluent Icons.
+- **Click-through:** `WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE` applied in `OnSourceInitialized` via P/Invoke after the HWND exists.
+- **Animation:** Window opacity fades in over 120 ms, idle for `osdTimeoutMs` (default 2 s), fades out over 280 ms. Re-pushes reset the idle timer and animate the bar fill from current to target over 180 ms (cubic ease-out).
 - **HA migration:** existing `Automations/Kodi-AVR-Volume-OSD.yaml` keeps trigger + `source == AV1` gate; swap action `kodi.call_method` → `rest_command` POST to `/volume`.
+
+Config knobs:
+- `osdEnabled` (bool, default true)
+- `osdPosition` (`top-center` | `bottom-center` | `top-right` | `bottom-right`, default `top-center`)
+- `osdTimeoutMs` (int, default 2000)
+- `osdScale` (double, default 1.0)
 
 ### 4.4 Toast notifications (new)
 
@@ -179,6 +184,7 @@ Design preserved for resumption:
 | POST/GET | `/sleep` (alias `/suspend`, or `/<token>/sleep`) | token | Suspend, with optional `?delay=N` | `202 {"action":"sleep","delay":n}` |
 | POST | `/sleep/cancel` | token | Cancel pending delayed sleep | `200 {"cancelled":true}` |
 | POST | `/notify` | token | Show Windows Toast | `200 {"shown":true}` |
+| POST | `/volume` | token | Show volume OSD overlay | `200 {"shown":true}` |
 
 **`GET /status` body:**
 ```json
@@ -435,7 +441,7 @@ New-NetFirewallRule -DisplayName "Valet HTTP 5009" -Direction Inbound `
 5. ✅ `App/SettingsForm.cs` + `App/AutostartTask.cs` + tray "Settings…" entry — all knobs editable. Autostart task install needs admin elevation (handled gracefully — config saves, schtasks warning surfaces if not elevated); installer will register the task at install time on `igomedia`.
 6. 🟡 `installer/Valet.iss` + `build.ps1` — script written, Release publish verified. Compile-to-installer-EXE pending Inno Setup install (`winget install --id JRSoftware.InnoSetup`).
 7. ✅ **Auto Update client** — `Update/UpdateChecker.cs` + startup hook + Settings "Check now" button. Smoke-tested no-releases path. Full update cycle (download + silent install) needs an actual GitHub Release with an installer asset to validate.
-8. **v1.1:** OSD module + `POST /volume` + HA migration off `script.securitycam`.
+8. ✅ **OSD module + `POST /volume`** — transparent click-through WPF overlay with rounded dark Win11-style flyout, fade-in/out, animated bar fill, configurable position/scale/timeout. HA migration off `script.securitycam` is now possible: swap the `kodi.call_method` action in `Automations/Kodi-AVR-Volume-OSD.yaml` for a `rest_command` POST to `/volume`.
 3. `Kodi/KodiController.cs` + `Kodi/PowerEvents.cs` + `Kodi/SteamWatcher.cs` + `Kodi/LifecycleStateMachine.cs` — boot → reconcile → sleep/wake → BPM handoff. Decommission KodiLauncher.
 4. `/status activity` — wire Kodi JSON-RPC client once lifecycle state populates `state` and `foreground`.
 5. `App/Config.cs` + Settings form — once knobs are settled.

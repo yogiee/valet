@@ -24,7 +24,7 @@ Valet runs as a single tray icon and consolidates three responsibilities that pr
 - **Kodi launcher.** Launches Kodi at logon (with optional boot delay), kills it cleanly when the system suspends, relaunches it on resume (with optional wake delay). Detects **Steam Big Picture** appearing on screen and gracefully closes Kodi to free GPU/RAM; relaunches Kodi when Big Picture exits.
 - **Remote power + status server.** A small HTTP server on port `5009` (LAN only, token-guarded) exposes `/sleep`, `/sleep/cancel`, `/status`, `/version`, and `/notify`. Root `/` is a token-free health check — *safe* by default, unlike its predecessor.
 - **Toast pass-through.** `POST /notify` from HA renders as a Windows Toast in the Action Center — visible regardless of which app is currently foreground.
-- **AVR Volume OSD** *(deferred to v1.1)* — a transparent click-through overlay rendering AVR volume changes pushed by HA, working over Kodi and borderless-fullscreen games.
+- **AVR Volume OSD** — transparent click-through overlay rendering AVR volume changes pushed by HA, working over Kodi and borderless-fullscreen games. Position / scale / timeout configurable.
 
 ## Install
 
@@ -57,6 +57,21 @@ rest_command:
     #   logo   — small circular icon on the side (best for square app icons)
     #   inline — full image, only visible in the Notifications Center expanded view (default)
     payload: '{"title":"{{ title }}","body":"{{ message }}","icon":"info","image":"{{ image | default(none) }}","imagePlacement":"hero"}'
+
+  # Volume OSD — driven by an HA automation on the AVR. RX-V685 example:
+  htpc_volume_osd:
+    url: "http://igomedia.local:5009/volume"
+    method: POST
+    headers:
+      X-Auth-Token: !secret valet_token
+    content_type: "application/json"
+    payload: >-
+      {% set v = state_attr('media_player.rx_v685','volume_level') | float(0) %}
+      {% set disp = ((v * 161) | round(0) | int) * 0.5 %}
+      {% set bar = [100, (disp / 75.5 * 100) | round(0) | int] | min %}
+      {% set muted = state_attr('media_player.rx_v685','is_volume_muted') %}
+      {% set label = 'Mute' if (muted or disp <= 0) else ('MAX' if disp >= 80.5 else '%.1f'|format(disp)) %}
+      {"level": {{ bar }}, "label": "{{ label }}", "muted": {{ (muted or disp <= 0)|lower }} }
 
 binary_sensor:
   - platform: rest

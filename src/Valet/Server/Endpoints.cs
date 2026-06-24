@@ -5,6 +5,7 @@ using System.Text.Json;
 using Valet.Kodi;
 using Valet.Native;
 using Valet.Notify;
+using Valet.Osd;
 using Valet.Power;
 
 namespace Valet.Server;
@@ -23,13 +24,20 @@ internal sealed class Endpoints
     private readonly PowerActions _power;
     private readonly LifecycleStateMachine? _lifecycle;
     private readonly KodiJsonRpc? _kodiRpc;
+    private readonly OsdController? _osd;
     private readonly DateTime _startedUtc = DateTime.UtcNow;
+    private VolumePayload? _lastVolume;
 
-    public Endpoints(PowerActions power, LifecycleStateMachine? lifecycle = null, KodiJsonRpc? kodiRpc = null)
+    public Endpoints(
+        PowerActions power,
+        LifecycleStateMachine? lifecycle = null,
+        KodiJsonRpc? kodiRpc = null,
+        OsdController? osd = null)
     {
         _power = power;
         _lifecycle = lifecycle;
         _kodiRpc = kodiRpc;
+        _osd = osd;
     }
 
     public async Task RouteAsync(HttpListenerContext ctx, Auth auth)
@@ -83,6 +91,11 @@ internal sealed class Endpoints
                 if (method != "POST") { await Reply405(ctx).ConfigureAwait(false); return; }
                 await HandleNotifyAsync(ctx).ConfigureAwait(false);
                 return;
+
+            case "/volume":
+                if (method != "POST") { await Reply405(ctx).ConfigureAwait(false); return; }
+                await HandleVolumeAsync(ctx).ConfigureAwait(false);
+                return;
         }
 
         await HttpServer.WriteJsonAsync(ctx.Response, 404,
@@ -123,6 +136,7 @@ internal sealed class Endpoints
             foreground,
             uptimeSec = uptime,
             sleepPendingSec = _power.PendingSecondsRemaining,
+            lastVolume = _lastVolume,
         }).ConfigureAwait(false);
     }
 
@@ -218,5 +232,49 @@ internal sealed class Endpoints
         public string? Scenario { get; set; }
         public string? Image { get; set; }          // image URL (http/https/file://)
         public string? ImagePlacement { get; set; } // inline (default) | hero | logo
+    }
+
+    private async Task HandleVolumeAsync(HttpListenerContext ctx)
+    {
+        VolumePayload? payload;
+        try
+        {
+            using var reader = new StreamReader(ctx.Request.InputStream, ctx.Request.ContentEncoding);
+            var body = await reader.ReadToEndAsync().ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(body))
+            {
+                await HttpServer.WriteJsonAsync(ctx.Response, 400,
+                    new { error = "empty_body" }).ConfigureAwait(false);
+                return;
+            }
+            payload = JsonSerializer.Deserialize<VolumePayload>(body, PayloadJsonOpts);
+        }
+        catch (JsonException ex)
+        {
+            await HttpServer.WriteJsonAsync(ctx.Response, 400,
+                new { error = "bad_json", message = ex.Message }).ConfigureAwait(false);
+            return;
+        }
+
+        if (payload is null || (payload.Level is null && string.IsNullOrWhiteSpace(payload.Label)))
+        {
+            await HttpServer.WriteJsonAsync(ctx.Response, 400,
+                new { error = "level_or_label_required" }).ConfigureAwait(false);
+            return;
+        }
+
+        var level = payload.Level ?? 0;
+        var muted = payload.Muted ?? false;
+        _lastVolume = payload;
+        _osd?.Show(level, payload.Label, muted);
+
+        await HttpServer.WriteJsonAsync(ctx.Response, 200, new { shown = true }).ConfigureAwait(false);
+    }
+
+    private sealed class VolumePayload
+    {
+        public int? Level { get; set; }      // 0..100
+        public string? Label { get; set; }   // e.g. "-38.5 dB"
+        public bool? Muted { get; set; }
     }
 }
